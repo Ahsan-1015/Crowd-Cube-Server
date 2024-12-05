@@ -34,13 +34,64 @@ async function run() {
     const campaignCollection = database.collection('campaigns');
 
     // Get all campaigns
-    app.get('/campaign', async (req, res) => {
+    app.get('/campaigns', async (req, res) => {
       try {
         const cursor = campaignCollection.find();
         const campaigns = await cursor.toArray();
         res.status(200).json(campaigns);
       } catch (error) {
         res.status(500).json({ error: 'Failed to fetch campaigns' });
+      }
+    });
+
+    // Backend sorting for campaigns
+    app.get('/campaigns', async (req, res) => {
+      const sortOrder = req.query.sort === 'desc' ? -1 : 1; // Default to ascending
+      try {
+        const cursor = campaignCollection
+          .find()
+          .sort({ minDonation: sortOrder });
+        const campaigns = await cursor.toArray();
+        res.status(200).json(campaigns);
+      } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch campaigns' });
+      }
+    });
+
+    // Get a single campaign by ID
+    app.get('/campaigns/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const campaign = await campaignCollection.findOne({
+          _id: new ObjectId(id),
+        });
+        if (campaign) {
+          res.status(200).json(campaign);
+        } else {
+          res.status(404).json({ message: 'Campaign not found' });
+        }
+      } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch campaign' });
+      }
+    });
+
+    // Add a new campaign
+    app.post('/campaigns', async (req, res) => {
+      const newCampaign = req.body;
+
+      if (
+        !newCampaign.title ||
+        !newCampaign.minDonation ||
+        !newCampaign.deadline
+      ) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      try {
+        const result = await campaignCollection.insertOne(newCampaign);
+        res.status(201).json(result);
+      } catch (error) {
+        res.status(500).json({ error: 'Failed to add campaign' });
       }
     });
 
@@ -53,7 +104,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
-  res.send('Crowdcube server is running!');
+  res.send('Crowd cube server is running!');
 });
 
 app.listen(port, () => {
