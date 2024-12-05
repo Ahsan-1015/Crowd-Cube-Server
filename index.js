@@ -32,6 +32,7 @@ async function run() {
 
     const database = client.db('campaignDb');
     const campaignCollection = database.collection('campaigns');
+    const donatedCollection = database.collection('donated'); // New collection for donations
 
     // Get all campaigns
     app.get('/campaigns', async (req, res) => {
@@ -92,6 +93,75 @@ async function run() {
         res.status(201).json(result);
       } catch (error) {
         res.status(500).json({ error: 'Failed to add campaign' });
+      }
+    });
+
+    // New POST endpoint for donations
+    app.post('/donate', async (req, res) => {
+      const { campaignId, userEmail, username, minDonation } = req.body;
+
+      // Validate required fields
+      if (!campaignId || !userEmail || !username || !minDonation) {
+        return res.status(400).json({ error: 'All fields are required' });
+      }
+
+      // Construct donation data
+      const newDonation = {
+        campaignId: new ObjectId(campaignId), // Assuming campaignId is provided as a string
+        userEmail,
+        username,
+        minDonation,
+        donatedAt: new Date(),
+      };
+
+      try {
+        // Insert the donation into the 'donated' collection
+        const result = await donatedCollection.insertOne(newDonation);
+
+        // Send success response
+        res.status(201).json({
+          message: 'Donation successfully recorded!',
+          donationId: result.insertedId,
+        });
+      } catch (error) {
+        console.error('Error inserting donation:', error);
+        res.status(500).json({ error: 'Failed to record donation' });
+      }
+    });
+
+    // Update a campaign by ID
+    app.put('/campaigns/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedCampaign = req.body;
+      try {
+        const result = await campaignCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedCampaign }
+        );
+        if (result.matchedCount > 0) {
+          res.status(200).json({ message: 'Campaign updated successfully' });
+        } else {
+          res.status(404).json({ message: 'Campaign not found' });
+        }
+      } catch (error) {
+        res.status(500).json({ error: 'Failed to update campaign' });
+      }
+    });
+
+    // Delete a campaign by ID
+    app.delete('/campaigns/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await campaignCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        if (result.deletedCount > 0) {
+          res.status(200).json({ message: 'Campaign deleted successfully' });
+        } else {
+          res.status(404).json({ message: 'Campaign not found' });
+        }
+      } catch (error) {
+        res.status(500).json({ error: 'Failed to delete campaign' });
       }
     });
 
