@@ -130,6 +130,28 @@ async function run() {
       }
     });
 
+    // Update a campaign
+    app.put('/campaigns/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+
+      try {
+        const result = await campaignCollection.updateOne(
+          { _id: new ObjectId(id) }, // Match the campaign by ID
+          { $set: updatedData } // Update with new data
+        );
+
+        if (result.matchedCount > 0) {
+          res.status(200).json({ message: 'Campaign updated successfully!' });
+        } else {
+          res.status(404).json({ error: 'Campaign not found.' });
+        }
+      } catch (error) {
+        console.error('Error updating campaign:', error);
+        res.status(500).json({ error: 'Failed to update the campaign.' });
+      }
+    });
+
     // New POST endpoint for donations
     app.post('/donate', async (req, res) => {
       const { campaignId, userEmail, username, minDonation } = req.body;
