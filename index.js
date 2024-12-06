@@ -65,6 +65,20 @@ async function run() {
       }
     });
 
+    // Backend sorting for campaigns
+    app.get('/campaigns', async (req, res) => {
+      const sortOrder = req.query.sort === 'desc' ? -1 : 1; // Default to ascending
+      try {
+        const cursor = campaignCollection
+          .find()
+          .sort({ minDonation: sortOrder });
+        const campaigns = await cursor.toArray();
+        res.status(200).json(campaigns);
+      } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch campaigns' });
+      }
+    });
+
     // Get a single campaign by ID
     app.get('/campaigns/:id', async (req, res) => {
       const id = req.params.id;
@@ -82,26 +96,6 @@ async function run() {
       }
     });
 
-    // Add a new campaign
-    // app.post('/campaigns', async (req, res) => {
-    //   const newCampaign = req.body;
-
-    //   if (
-    //     !newCampaign.title ||
-    //     !newCampaign.minDonation ||
-    //     !newCampaign.deadline
-    //   ) {
-    //     return res.status(400).json({ error: 'Missing required fields' });
-    //   }
-
-    //   try {
-    //     const result = await campaignCollection.insertOne(newCampaign);
-    //     res.status(201).json(result);
-    //   } catch (error) {
-    //     res.status(500).json({ error: 'Failed to add campaign' });
-    //   }
-    // });
-
     // POST - Add Visa (with userEmail)
     app.post('/campaigns', async (req, res) => {
       const data = req.body;
@@ -115,6 +109,24 @@ async function run() {
       } catch (error) {
         console.error('Error adding visa:', error);
         res.status(500).json({ message: 'Error adding visa.' });
+      }
+    });
+
+    // delate
+    app.delete('/campaigns/:id', async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await campaignCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        if (result.deletedCount === 1) {
+          res.status(200).json({ message: 'Campaign deleted successfully' });
+        } else {
+          res.status(404).json({ error: 'Campaign not found' });
+        }
+      } catch (error) {
+        console.error('Error deleting campaign:', error);
+        res.status(500).json({ error: 'Failed to delete campaign' });
       }
     });
 
