@@ -1,4 +1,4 @@
-require('dotenv').config(); // Load environment variables from .env file
+// require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -45,17 +45,23 @@ async function run() {
       }
     });
 
-    // Backend sorting for campaigns
-    app.get('/campaigns', async (req, res) => {
-      const sortOrder = req.query.sort === 'desc' ? -1 : 1; // Default to ascending
+    app.get('/myCampaigns', async (req, res) => {
+      const { userEmail } = req.query; // Extract the email from query parameters
+      if (!userEmail) {
+        return res
+          .status(400)
+          .json({ message: 'Email query parameter is required.' });
+      }
+
       try {
-        const cursor = campaignCollection
-          .find()
-          .sort({ minDonation: sortOrder });
-        const campaigns = await cursor.toArray();
-        res.status(200).json(campaigns);
+        // Filter campaigns by userEmail
+        const campaigns = await campaignCollection
+          .find({ userEmail })
+          .toArray();
+        res.status(200).json(campaigns); // Send the campaigns back to the frontend
       } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch campaigns' });
+        console.error('Error fetching campaigns:', error);
+        res.status(500).json({ error: 'Failed to fetch campaigns.' });
       }
     });
 
@@ -77,22 +83,38 @@ async function run() {
     });
 
     // Add a new campaign
-    app.post('/campaigns', async (req, res) => {
-      const newCampaign = req.body;
+    // app.post('/campaigns', async (req, res) => {
+    //   const newCampaign = req.body;
 
-      if (
-        !newCampaign.title ||
-        !newCampaign.minDonation ||
-        !newCampaign.deadline
-      ) {
-        return res.status(400).json({ error: 'Missing required fields' });
+    //   if (
+    //     !newCampaign.title ||
+    //     !newCampaign.minDonation ||
+    //     !newCampaign.deadline
+    //   ) {
+    //     return res.status(400).json({ error: 'Missing required fields' });
+    //   }
+
+    //   try {
+    //     const result = await campaignCollection.insertOne(newCampaign);
+    //     res.status(201).json(result);
+    //   } catch (error) {
+    //     res.status(500).json({ error: 'Failed to add campaign' });
+    //   }
+    // });
+
+    // POST - Add Visa (with userEmail)
+    app.post('/campaigns', async (req, res) => {
+      const data = req.body;
+      if (!data.userEmail) {
+        return res.status(400).json({ message: 'User email is required.' });
       }
 
       try {
-        const result = await campaignCollection.insertOne(newCampaign);
+        const result = await campaignCollection.insertOne(data);
         res.status(201).json(result);
       } catch (error) {
-        res.status(500).json({ error: 'Failed to add campaign' });
+        console.error('Error adding visa:', error);
+        res.status(500).json({ message: 'Error adding visa.' });
       }
     });
 
@@ -129,39 +151,23 @@ async function run() {
       }
     });
 
-    // Update a campaign by ID
-    app.put('/campaigns/:id', async (req, res) => {
-      const id = req.params.id;
-      const updatedCampaign = req.body;
-      try {
-        const result = await campaignCollection.updateOne(
-          { _id: new ObjectId(id) },
-          { $set: updatedCampaign }
-        );
-        if (result.matchedCount > 0) {
-          res.status(200).json({ message: 'Campaign updated successfully' });
-        } else {
-          res.status(404).json({ message: 'Campaign not found' });
-        }
-      } catch (error) {
-        res.status(500).json({ error: 'Failed to update campaign' });
+    app.get('/campaigns', async (req, res) => {
+      const { email } = req.query;
+      if (!email) {
+        return res
+          .status(400)
+          .json({ message: 'Email query parameter is required.' });
       }
-    });
 
-    // Delete a campaign by ID
-    app.delete('/campaigns/:id', async (req, res) => {
-      const id = req.params.id;
       try {
-        const result = await campaignCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
-        if (result.deletedCount > 0) {
-          res.status(200).json({ message: 'Campaign deleted successfully' });
-        } else {
-          res.status(404).json({ message: 'Campaign not found' });
-        }
+        // Filter campaigns by user email
+        const campaigns = await campaignCollection
+          .find({ userEmail: email })
+          .toArray();
+        res.status(200).json(campaigns);
       } catch (error) {
-        res.status(500).json({ error: 'Failed to delete campaign' });
+        console.error('Error fetching campaigns:', error);
+        res.status(500).json({ message: 'Error fetching campaigns.' });
       }
     });
 
