@@ -154,27 +154,43 @@ async function run() {
 
     // New POST endpoint for donations
     app.post('/donate', async (req, res) => {
-      const { campaignId, userEmail, username, minDonation } = req.body;
+      const { campaignId, userEmail, username, minDonation, description } =
+        req.body;
 
       // Validate required fields
       if (!campaignId || !userEmail || !username || !minDonation) {
         return res.status(400).json({ error: 'All fields are required' });
       }
 
+      // Fetch the campaign to get the minimum donation amount
+      const campaign = await campaignCollection.findOne({
+        _id: new ObjectId(campaignId),
+      });
+
+      if (!campaign) {
+        return res.status(404).json({ error: 'Campaign not found' });
+      }
+
+      // Validate the donation amount
+      if (parseFloat(minDonation) < parseFloat(campaign.minDonation)) {
+        return res
+          .status(400)
+          .json({ error: `Minimum donation is $${campaign.minDonation}.` });
+      }
+
       // Construct donation data
       const newDonation = {
-        campaignId: new ObjectId(campaignId), // Assuming campaignId is provided as a string
+        campaignId: new ObjectId(campaignId),
         userEmail,
         username,
         minDonation,
+        description, // Include the description in the donation data
         donatedAt: new Date(),
       };
 
       try {
-        // Insert the donation into the 'donated' collection
         const result = await donatedCollection.insertOne(newDonation);
 
-        // Send success response
         res.status(201).json({
           message: 'Donation successfully recorded!',
           donationId: result.insertedId,
@@ -182,6 +198,43 @@ async function run() {
       } catch (error) {
         console.error('Error inserting donation:', error);
         res.status(500).json({ error: 'Failed to record donation' });
+      }
+    });
+
+    // In your backend file, modify the /myDonations route to join campaign data
+    app.get('/myDonations', async (req, res) => {
+      const { userEmail } = req.query;
+
+      if (!userEmail) {
+        return res
+          .status(400)
+          .json({ message: 'Email query parameter is required.' });
+      }
+
+      try {
+        // Fetch donations
+        const donations = await donatedCollection
+          .aggregate([
+            {
+              $match: { userEmail }, // Filter by user email
+            },
+            {
+              $lookup: {
+                from: 'campaigns',
+                localField: 'campaignId',
+                foreignField: '_id',
+                as: 'campaignData',
+              },
+            },
+            {
+              $unwind: '$campaignData', // Unwind the campaign data array
+            },
+          ])
+          .toArray();
+
+        res.status(200).json(donations); // Return the donations with campaign data
+      } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch donations' });
       }
     });
 
