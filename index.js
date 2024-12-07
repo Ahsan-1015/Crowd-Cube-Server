@@ -67,7 +67,7 @@ async function run() {
 
     // Backend sorting for campaigns
     app.get('/campaigns', async (req, res) => {
-      const sortOrder = req.query.sort === 'desc' ? -1 : 1; // Default to ascending
+      const sortOrder = req.query.sort === 'desc' ? -1 : 1; // Ascending by default
       try {
         const cursor = campaignCollection
           .find()
@@ -75,7 +75,8 @@ async function run() {
         const campaigns = await cursor.toArray();
         res.status(200).json(campaigns);
       } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch campaigns' });
+        console.error('Error fetching campaigns:', error);
+        res.status(500).json({ error: 'Failed to fetch campaigns.' });
       }
     });
 
@@ -96,7 +97,7 @@ async function run() {
       }
     });
 
-    // POST - Add Visa (with userEmail)
+    // POST - Add campaign (with userEmail)
     app.post('/campaigns', async (req, res) => {
       const data = req.body;
       if (!data.userEmail) {
